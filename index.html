@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SADMAN FAHMID RAJ. // RETRO_OS_v2.64</title>
+<link rel="icon" type="image/svg+xml" id="favicon" href="">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+  :root {
+    --bg: #f0ede6;
+    --fg: #1a1a1a;
+    --accent: #1a1a1a;
+    --border: #1a1a1a;
+    --muted: #555;
+    --box-bg: #e8e4dc;
+    --scanline: rgba(0,0,0,0.03);
+    --cursor: #1a1a1a;
+  }
+
+  .theme-dark {
+    --bg: #0a0a0a;
+    --fg: #d4d0c8;
+    --accent: #d4d0c8;
+    --border: #333;
+    --muted: #888;
+    --box-bg: #111;
+    --scanline: rgba(255,255,255,0.015);
+    --cursor: #d4d0c8;
+  }
+
+
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* CRT scanlines overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      var(--scanline) 0px,
+      var(--scanline) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* CRT flicker */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.25) 100%);
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  .page-wrapper {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  /* ── TOP STATUS BAR ── */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 0 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .status-bar .sys {
+    color: var(--fg);
+    letter-spacing: 0.1em;
+  }
+
+  .status-right {
+    display: flex;
+    gap: 28px;
+    align-items: center;
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--fg);
+    margin-right: 5px;
+    animation: blink 2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  /* ── HERO SECTION ── */
+  .hero {
+    padding: 60px 0 40px;
+  }
+
+  .hero-name {
+    font-family: 'VT323', monospace;
+    font-size: clamp(48px, 7vw, 90px);
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin-bottom: 50px;
+    color: var(--fg);
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+  }
+
+  .hero-name .cursor-dot {
+    animation: blink 1.2s infinite;
+  }
+
+  .hero-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: start;
+  }
+
+  /* ── ASCII ART PORTRAIT CONTAINER ── */
+  .ascii-container {
+    position: relative;
+    width: 340px;
+    height: 340px;
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    background: var(--box-bg);
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+    margin-left: 60px; /* Shift to the right side slightly */
+  }
+
+  .real-photo {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: 68% 50%; /* Center the silhouette from wide video */
+    opacity: 0;
+    transform: scale(0.98);
+    filter: grayscale(85%) contrast(1.15) brightness(0.9);
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), 
+                filter 0.5s ease;
+    z-index: 1;
+  }
+
+  .ascii-portrait {
+    position: relative;
+    z-index: 2;
+    color: var(--fg);
+    opacity: 0.95;
+    background: transparent;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    width: 100%; height: 100%;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  /* Keep video invisible and ASCII canvas fully visible on hover */
+  .ascii-container:hover .real-photo {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  .ascii-container:hover .ascii-portrait {
+    opacity: 0.95;
+    transform: scale(1.0);
+  }
+
+  /* ── INFO PANEL ── */
+  .info-panel {
+    padding-top: 10px;
+  }
+
+  .label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .label::before {
+    content: '// ';
+  }
+
+  .value {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 28px;
+    color: var(--fg);
+    text-transform: uppercase;
+  }
+
+  .system-report {
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+    background: var(--box-bg);
+    margin-top: 10px;
+  }
+
+  .system-report .report-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+    color: var(--fg);
+  }
+
+  .system-report p {
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  .system-report p em {
+    color: var(--fg);
+    font-style: normal;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 10px 0;
+  }
+
+  /* ── NAVIGATION BAR ── */
+  .nav-bar {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 0;
+    display: flex;
+    gap: 0;
+    margin-top: 40px;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.25s ease;
+  }
+
+  .nav-item:last-child {
+    border-right: none;
+  }
+
+  .nav-item:hover {
+    background: rgba(128,128,128,0.08);
+    transform: translateY(-2px);
+  }
+
+  .nav-item:first-child {
+    padding-left: 0;
+  }
+
+  .key-badge {
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--fg);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .nav-label {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .nav-label .main {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fg);
+  }
+
+  .nav-label .sub {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: lowercase;
+    margin-top: 1px;
+  }
+
+  /* ── FOOTER HINT ── */
+  .footer-hint {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0 20px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── CYCLE THEME BUTTON ── */
+  .theme-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    background: var(--bg);
+    color: var(--fg);
+    cursor: pointer;
+    z-index: 1000;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .theme-btn:hover {
+    background: var(--fg);
+    color: var(--bg);
+  }
+
+  /* ── TYPING CURSOR ── */
+  .typing-cursor {
+    display: inline-block;
+    width: 3px;
+    height: 0.85em;
+    background: var(--cursor);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 1s infinite step-end;
+  }
+
+  /* ── CONTENT SECTIONS (scrolling landing layout) ── */
+  .section {
+    display: block;
+    padding: 60px 0 40px;
+    border-bottom: 1px dashed var(--border);
+    opacity: 0;
+    transition: opacity 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .section:last-of-type {
+    border-bottom: none;
+  }
+
+  .booted .section {
+    opacity: 1;
+  }
+
+  .section-header {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-header::before { content: '// '; }
+
+  .section h2 {
+    font-family: 'VT323', monospace;
+    font-size: 36px;
+    letter-spacing: 0.05em;
+    margin-bottom: 20px;
+    font-weight: 400;
+  }
+
+  .bio-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+  }
+
+  .bio-block {
+    border: 1px solid var(--border);
+    padding: 20px;
+    background: var(--box-bg);
+    transition: background 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+  }
+
+  .bio-block:hover {
+    transform: translateY(-2px);
+    border-color: var(--fg);
+    background: rgba(128,128,128,0.02);
+  }
+
+  .bio-block h3 {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .bio-block p {
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--fg);
+  }
+
+  .project-list {
+    display: grid;
+    gap: 16px;
+  }
+
+  .project-item {
+    border: 1px solid var(--border);
+    padding: 20px;
+    background: var(--box-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+  }
+
+  .project-item:hover {
+    background: rgba(128,128,128,0.08);
+    transform: translateX(4px);
+    border-color: var(--fg);
+  }
+
+  .project-item .proj-id {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    letter-spacing: 0.1em;
+  }
+
+  .project-item .proj-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+
+  .project-item .proj-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .proj-status {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .service-card {
+    border: 1px solid var(--border);
+    padding: 24px;
+    background: var(--box-bg);
+    transition: background 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+  }
+
+  .service-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--fg);
+    background: rgba(128,128,128,0.02);
+  }
+
+  .service-card .svc-num {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    letter-spacing: 0.12em;
+  }
+
+  .service-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  .service-card p {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+    .page-wrapper { padding: 0 18px; }
+    .hero-name { font-size: 42px; }
+    .hero-content { grid-template-columns: 1fr; gap: 30px; }
+    .ascii-container { width: 260px; height: 260px; margin: 0 auto; }
+    .ascii-portrait { font-size: 5px; }
+    .status-bar { flex-direction: column; gap: 4px; align-items: flex-start; }
+    .status-right { flex-direction: column; gap: 4px; align-items: flex-start; }
+    .nav-bar { flex-direction: column; }
+    .nav-item { border-right: none; border-bottom: 1px solid var(--border); padding: 10px 0; }
+    .nav-item:last-child { border-bottom: none; }
+    .bio-grid { grid-template-columns: 1fr; }
+    .services-grid { grid-template-columns: 1fr; }
+    .footer-hint { flex-direction: column; gap: 4px; }
+    .theme-btn { bottom: 14px; right: 14px; font-size: 10px; padding: 6px 10px; }
+  }
+
+  /* Pixel-noise texture on ascii */
+  @keyframes glitch {
+    0%, 95%, 100% { transform: translate(0); }
+    96% { transform: translate(-2px, 1px); }
+    97% { transform: translate(2px, -1px); }
+    98% { transform: translate(-1px, 2px); }
+    99% { transform: translate(1px, -2px); }
+  }
+
+  .hero-name {
+    animation: glitch 8s infinite;
+  }
+
+  /* Boot Animation Transitions */
+  .status-bar, .info-panel, .nav-bar, .footer-hint {
+    opacity: 0;
+    transition: opacity 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .booted .status-bar,
+  .booted .info-panel,
+  .booted .nav-bar,
+  .booted .footer-hint {
+    opacity: 1;
+  }
+
+  .ascii-portrait {
+    transition: opacity 0.5s ease;
+  }
+
+  /* Smooth Scroll Reveal Animations */
+  .reveal-item {
+    opacity: 0 !important;
+    transform: translateY(30px) scale(0.98);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.25s ease, 
+                border-color 0.25s ease !important;
+  }
+
+  .reveal-item.revealed {
+    opacity: 1 !important;
+    transform: translateY(0) scale(1);
+  }
+
+  /* Ambient background canvas */
+  #ambient-bg {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: -2;
+    pointer-events: none;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+  }
+
+  /* Smooth scroll support */
+  html {
+    scroll-behavior: smooth;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span class="sys">SYS: RETRO_OS_v2.64</span>
+    <div class="status-right">
+      <span>LOC: DHAKA_BD</span>
+      <span>TIME: <span id="live-time">00:00:00</span></span>
+      <span>STATUS: <span class="status-dot"></span>OPERATIONAL</span>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-name">SADMAN FAHMID RAJ<span class="cursor-dot">.</span></div>
+
+    <div class="hero-content">
+
+      <!-- ASCII PORTRAIT -->
+      <!-- ASCII PORTRAIT CONTAINER -->
+      <div class="ascii-container">
+        <video id="profile-video-el" class="real-photo" autoplay loop muted playsinline>
+          <source src="profile_video.mp4" type="video/mp4">
+        </video>
+        <canvas id="ascii-canvas" class="ascii-portrait"></canvas>
+        <canvas id="hidden-video-canvas" style="display: none;"></canvas>
+      </div>
+      
+      
+      
+
+      <!-- INFO PANEL -->
+      <div class="info-panel">
+        <div class="label">DESIGNATION</div>
+        <div class="value">INTERACTIVE DEVELOPER &amp; DIGITAL CRAFTSMAN</div>
+
+        <div class="label">BASE NODE</div>
+        <div class="value">DHAKA, BANGLADESH</div>
+
+        <div class="system-report">
+          <div class="report-title">[SYSTEM REPORT]</div>
+          <p>A highly polished, responsive retro portfolio built with minimal overhead. Press <em>Ctrl + I</em> to cycle color themes or browse the registers below.</p>
+        </div>
+      </div>
+
+    </div><!-- /hero-content -->
+
+    <!-- NAVIGATION BAR -->
+    <div class="nav-bar">
+      <div class="nav-item" onclick="showSection('home')" id="nav-home">
+        <span class="key-badge">Ctrl+H</span>
+        <div class="nav-label">
+          <span class="main">HOME</span>
+          <span class="sub">top index</span>
+        </div>
+      </div>
+      <div class="nav-item" onclick="showSection('biography')" id="nav-biography">
+        <span class="key-badge">Ctrl+B</span>
+        <div class="nav-label">
+          <span class="main">BIOGRAPHY</span>
+          <span class="sub">philosophy &amp; logs</span>
+        </div>
+      </div>
+      <div class="nav-item" onclick="showSection('projects')" id="nav-projects">
+        <span class="key-badge">Ctrl+P</span>
+        <div class="nav-label">
+          <span class="main">PROJECTS</span>
+          <span class="sub">works registry</span>
+        </div>
+      </div>
+      <div class="nav-item" onclick="showSection('services')" id="nav-services">
+        <span class="key-badge">Ctrl+S</span>
+        <div class="nav-label">
+          <span class="main">SERVICES</span>
+          <span class="sub">expert capabilities</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER HINT -->
+    <div class="footer-hint">
+      <span>INIT WITH Ctrl+H &nbsp;&nbsp; PRESS Ctrl+I TO CYCLE THEMES</span>
+    </div>
+
+  </div><!-- /hero -->
+
+  <!-- BIOGRAPHY SECTION -->
+  <div class="section" id="section-biography">
+    <div class="section-header">BIOGRAPHY // PHILOSOPHY &amp; LOGS</div>
+    <div class="bio-grid">
+      <div class="bio-block reveal-item">
+        <h3>// ORIGIN &amp; TRAJECTORY</h3>
+        <p>Sadman Fahmid Raj is an interactive developer and digital craftsman based in Dhaka, Bangladesh. Fusing retro-computational aesthetics with modern design tokens, he builds high-fidelity web experiences that prioritize low latency, custom rendering logic, and visual immersion.</p>
+      </div>
+      <div class="bio-block reveal-item">
+        <h3>// THE HUMANWARE PHILOSOPHY</h3>
+        <p>Every pixel is a conscious choice; every layout transition is a narrative cue. True luxury in design is lightweight. Stripping away heavy dependencies allows the core message to breathe in high contrast. Favouring handcrafted logic over bulk libraries.</p>
+      </div>
+      <div class="bio-block reveal-item">
+        <h3>// SKILLS &amp; OPERATIONS MATRIX</h3>
+        <p><strong>Creative Frontend:</strong> HTML5 Canvas, WebGL, SVG, CSS Architecture, Framer Motion, GSAP, Responsive Grid systems.</p>
+        <p style="margin-top: 8px;"><strong>Fullstack Architect:</strong> React, Next.js, TypeScript, Node.js, Express, REST APIs, PostgreSQL, Docker.</p>
+        <p style="margin-top: 8px;"><strong>Languages &amp; Scripts:</strong> JavaScript (ES6+), Java, Python, PowerShell, Shell Scripting, Discord API.</p>
+      </div>
+      <div class="bio-block reveal-item">
+        <h3>// CURRENT STATUS &amp; LOGS</h3>
+        <p><strong>Status:</strong> Active &amp; Operational in Dhaka, BD (Loc: GMT+6).</p>
+        <p style="margin-top: 4px;"><strong>milestones:</strong> Completed windows migration v2.64. System registry status verified.</p>
+        <p style="margin-top: 4px;"><strong>uptime:</strong> 99.987% | <strong>Connection:</strong> Fiber nodes secure.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROJECTS SECTION -->
+  <div class="section" id="section-projects">
+    <div class="section-header">PROJECTS // WORKS REGISTRY</div>
+    <div class="project-list">
+      <div class="project-item reveal-item">
+        <div>
+          <div class="proj-id">// PROJECT_001</div>
+          <div class="proj-name">SADMAN / FRAMES</div>
+          <div class="proj-desc">A premium mobile photography portfolio. Features a custom canvas dust-and-scratches overlay generator, dynamic theme engine, custom image viewer, and integrated Leaflet map displaying global coordinates of shots. Built with zero bulk frameworks.</div>
+        </div>
+        <span class="proj-status">● LIVE_NODE</span>
+      </div>
+      <div class="project-item reveal-item">
+        <div>
+          <div class="proj-id">// PROJECT_002</div>
+          <div class="proj-name">DEAD CURRENCIES</div>
+          <div class="proj-desc">Next.js edge currency converter and digital currency tracker. Optimized for edge runtime serverless deployments with instant API conversion data, HSL dark mode variables, and local-storage caching.</div>
+        </div>
+        <span class="proj-status">● ACTIVE</span>
+      </div>
+      <div class="project-item reveal-item">
+        <div>
+          <div class="proj-id">// PROJECT_003</div>
+          <div class="proj-name">SPORTS LEAGUE MANAGER</div>
+          <div class="proj-desc">Java NetBeans JSP administration platform for league scheduling and analytics. Handles database synchronization, automated tournament grids, referee allocation algorithms, and robust local hosting.</div>
+        </div>
+        <span class="proj-status">○ ARCHIVED</span>
+      </div>
+      <div class="project-item reveal-item">
+        <div>
+          <div class="proj-id">// PROJECT_004</div>
+          <div class="proj-name">RETRO_OS PORTFOLIO</div>
+          <div class="proj-desc">This digital console website. High-fidelity ASCII art rendering engine, keystroke clack audio synthesizer, double startup BIOS beep, duotone themes, and dynamic layout transitions. Built in static HTML, CSS, and JS.</div>
+        </div>
+        <span class="proj-status">● MAIN_BUILD</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERVICES SECTION -->
+  <div class="section" id="section-services">
+    <div class="section-header">SERVICES // EXPERT CAPABILITIES</div>
+    <div class="services-grid">
+      <div class="service-card reveal-item">
+        <div class="svc-num">// SVC_01</div>
+        <h3>CREATIVE FRONTEND &amp; WEB GRAPHICS</h3>
+        <p>Interactive web layout engineering with advanced animations, custom canvas drawing, and high-performance SVG graphics. Pixel-perfect translation from Figma mockups with smooth, hardware-accelerated micro-interactions.</p>
+      </div>
+      <div class="service-card reveal-item">
+        <div class="svc-num">// SVC_02</div>
+        <h3>RETRO &amp; MODERN UI ARCHITECTURE</h3>
+        <p>Designing and constructing custom design systems, tokenized HSL stylesheets, theme cycle engines, and dither/matrix filters. Crafting interfaces that look premium, feel responsive, and scale seamlessly to mobile screens.</p>
+      </div>
+      <div class="service-card reveal-item">
+        <div class="svc-num">// SVC_03</div>
+        <h3>FULL-STACK APPS &amp; RUNTIME OPTIMIZATION</h3>
+        <p>Building responsive Next.js apps, RESTful API endpoints, server-side database integration, secure authentication, and minimal bundle size assets. Optimizing core web vitals for search engines and edge caching.</p>
+      </div>
+      <div class="service-card reveal-item">
+        <div class="svc-num">// SVC_04</div>
+        <h3>AUTOMATION SCRIPTS &amp; TOOLING</h3>
+        <p>Writing custom tools, file conversion scripts (like image-to-ASCII samplers), automated background runners, web scrapers, and local diagnostic helpers in Python, Node.js, and PowerShell.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-wrapper -->
+
+<!-- CYCLE THEME BUTTON -->
+<button class="theme-btn" onclick="cycleTheme()">CYCLE THEME [Ctrl+I]</button>
+
+<script>
+  const themes = ['', 'theme-dark'];
+  let themeIndex = 0;
+
+  // --- AUDIO SYNTHESIZER (MECHANICAL CLACKS & BOOT BEEP) ---
+  let audioCtx = null;
+
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+
+  function playBeep(freq, duration) {
+    try {
+      initAudio();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      
+      gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {
+      // Audio context blocked by browser
+    }
+  }
+
+  function playKeyClick() {
+    try {
+      initAudio();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      const bufferSize = audioCtx.sampleRate * 0.015; // 15ms click sound
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+      }
+      
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1100 + Math.random() * 500;
+      filter.Q.value = 2.5;
+      
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.015);
+      
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      noise.start();
+    } catch (e) {
+      // Audio context blocked by browser
+    }
+  }
+
+  function updateFavicon() {
+    const favicon = document.getElementById('favicon');
+    if (!favicon) return;
+    const isDark = document.body.classList.contains('theme-dark');
+    const bg = isDark ? '%230a0a0a' : '%23f0ede6';
+    const fg = isDark ? '%23d4d0c8' : '%231a1a1a';
+    favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='${bg}' stroke='${fg}' stroke-width='6'/><text x='20' y='72' font-family='monospace' font-weight='bold' font-size='65' fill='${fg}'>&gt;_</text></svg>`;
+  }
+
+  function cycleTheme() {
+    document.body.classList.remove(...themes.filter(t => t));
+    themeIndex = (themeIndex + 1) % themes.length;
+    if (themes[themeIndex]) {
+      document.body.classList.add(themes[themeIndex]);
+    }
+    updateFavicon();
+    playBeep(900, 0.04);
+  }
+
+  function showSection(name) {
+    playBeep(700, 0.04);
+    if (name === 'home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      const sec = document.getElementById('section-' + name);
+      if (sec) {
+        sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
+
+
+  // --- AMBIENT TERMINAL CODE RAIN ---
+  function initAmbientBg() {
+    const canvas = document.getElementById('ambient-bg');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    let w = canvas.width = window.innerWidth;
+    let h = canvas.height = window.innerHeight;
+    
+    window.addEventListener('resize', () => {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    });
+    
+    const chars = "0123456789ABCDEF><_[]{}*-=+";
+    const fontSize = 11;
+    const columns = Math.floor(w / 24); // spaced apart
+    const drops = [];
+    const speeds = [];
+    const values = [];
+    
+    for (let i = 0; i < columns; i++) {
+      drops[i] = Math.random() * -h / fontSize; // random start above screen
+      speeds[i] = 0.5 + Math.random() * 0.8; // slow moving
+      values[i] = chars[Math.floor(Math.random() * chars.length)];
+    }
+    
+    function draw() {
+      // Clear with slight trailing opacity
+      ctx.clearRect(0, 0, w, h);
+      
+      // Get current theme foreground color
+      const fgColor = getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#1a1a1a';
+      ctx.fillStyle = fgColor;
+      
+      for (let i = 0; i < columns; i++) {
+        // Draw the character with extremely low opacity
+        ctx.font = `${fontSize}px 'Share Tech Mono', monospace`;
+        ctx.globalAlpha = 0.024; // ultra-subtle
+        
+        ctx.fillText(values[i], i * 24, drops[i] * fontSize);
+        
+        // Slow falling
+        drops[i] += speeds[i];
+        
+        // Randomize character occasionally
+        if (Math.random() > 0.96) {
+          values[i] = chars[Math.floor(Math.random() * chars.length)];
+        }
+        
+        // Reset to top when off screen
+        if (drops[i] * fontSize > h) {
+          drops[i] = -2;
+          speeds[i] = 0.5 + Math.random() * 0.8;
+        }
+      }
+      
+      requestAnimationFrame(draw);
+    }
+    
+    draw();
+  }
+
+
+  // --- REAL-TIME VIDEO TO ASCII ENGINE ---
+  let asciiAnimationId = null;
+  function initVideoAsciiEngine() {
+    const video = document.getElementById('profile-video-el');
+    const asciiCanvas = document.getElementById('ascii-canvas');
+    const hiddenCanvas = document.getElementById('hidden-video-canvas');
+    
+    if (!video || !asciiCanvas || !hiddenCanvas) return;
+    
+    const asciiCtx = asciiCanvas.getContext('2d');
+    const hiddenCtx = hiddenCanvas.getContext('2d');
+    
+    // Grid dimensions: matches resolution from the static script
+    const cols = 92;
+    const rows = 55;
+    
+    hiddenCanvas.width = cols;
+    hiddenCanvas.height = rows;
+    
+    // Set display resolution of ascii canvas
+    asciiCanvas.width = 340;
+    asciiCanvas.height = 340;
+    
+    const chars = "MWKOkxolcc::,,.'` ";
+    const charsLen = chars.length;
+    
+    function drawFrame() {
+      if (video.paused || video.ended) {
+        asciiAnimationId = requestAnimationFrame(drawFrame);
+        return;
+      }
+      
+      // 1. Draw and crop video onto hidden resolution canvas
+      // Wide video dimensions are centered on silhouette using focal bounds
+      const vW = video.videoWidth || 640;
+      const vH = video.videoHeight || 480;
+      
+      // Calculate square crop: focal region centered on silhouette
+      const cropSize = Math.min(vW, vH) * 0.72;
+      const cropX = (vW - cropSize) * 0.68; // 68% horizontal offset
+      const cropY = (vH - cropSize) * 0.50; // center vertically
+      
+      hiddenCtx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, cols, rows);
+      
+      // 2. Read pixels
+      let imgData;
+      try {
+        imgData = hiddenCtx.getImageData(0, 0, cols, rows);
+      } catch (e) {
+        // Fallback for CORS
+        asciiAnimationId = requestAnimationFrame(drawFrame);
+        return;
+      }
+      
+      const pixels = imgData.data;
+      
+      // 3. Render ASCII characters onto display canvas
+      asciiCtx.clearRect(0, 0, asciiCanvas.width, asciiCanvas.height);
+      
+      const isDark = document.body.classList.contains('theme-dark');
+      const fgColor = isDark ? '#ffffff' : (getComputedStyle(document.documentElement).getPropertyValue('--fg').trim() || '#1a1a1a');
+      asciiCtx.fillStyle = fgColor;
+      asciiCtx.font = "bold 7px 'Share Tech Mono', monospace";
+      asciiCtx.textAlign = 'left';
+      asciiCtx.textBaseline = 'top';
+      
+      const cellW = asciiCanvas.width / cols;
+      const cellH = asciiCanvas.height / rows;
+      
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const idx = (y * cols + x) * 4;
+          const r = pixels[idx];
+          const g = pixels[idx+1];
+          const b = pixels[idx+2];
+          
+          let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          
+          // Boost contrast slightly
+          gray = (gray - 120) * 1.65 + 120;
+          if (gray < 0) gray = 0;
+          if (gray > 255) gray = 255;
+          
+          const charIdx = Math.floor((gray / 255) * (charsLen - 1));
+          const char = chars[charIdx];
+          
+          if (char !== ' ') {
+            asciiCtx.fillText(char, x * cellW, y * cellH);
+          }
+        }
+      }
+      
+      asciiAnimationId = requestAnimationFrame(drawFrame);
+    }
+    
+    video.addEventListener('play', () => {
+      if (!asciiAnimationId) {
+        drawFrame();
+      }
+    });
+    
+    // Start drawing initially
+    if (video.readyState >= 2) {
+      drawFrame();
+    } else {
+      video.addEventListener('loadeddata', () => {
+        drawFrame();
+      });
+    }
+  }
+
+  // --- CYBER DECODER TEXT SHUFFLE EFFECT ---
+  function initTextDecoders() {
+    const shuffleChars = "█▓▒░><_[]#%*@?";
+    
+    function decodeText(element) {
+      if (!document.body.classList.contains('booted')) return;
+      if (element.dataset.decoding === 'true') return;
+      element.dataset.decoding = 'true';
+      
+      const originalText = element.dataset.original || element.textContent;
+      element.dataset.original = originalText;
+      
+      let iteration = 0;
+      const interval = setInterval(() => {
+        element.innerHTML = originalText.split("")
+          .map((char, index) => {
+            if (index < iteration) {
+              return originalText[index];
+            }
+            if (char === " ") return " ";
+            return shuffleChars[Math.floor(Math.random() * shuffleChars.length)];
+          })
+          .join("");
+        
+        if (iteration >= originalText.length) {
+          clearInterval(interval);
+          element.dataset.decoding = 'false';
+          element.textContent = originalText;
+        }
+        
+        iteration += 1.8; // speed factor
+      }, 16);
+    }
+    
+    // Add event listeners to nav label main text
+    document.querySelectorAll('.nav-item').forEach(item => {
+      const mainText = item.querySelector('.nav-label .main');
+      if (mainText) {
+        item.addEventListener('mouseenter', () => decodeText(mainText));
+      }
+    });
+
+    // Add listener to user-name
+    const nameEl = document.querySelector('.hero-name');
+    if (nameEl) {
+      nameEl.addEventListener('mouseenter', () => decodeText(nameEl));
+    }
+  }
+
+  // --- CRT REFRESH BEAM SWEEP ---
+  function initCRTBeamSweep() {
+    // Handled in realtime by ambient canvas sweep overlays or ignored
+  }
+
+  // --- STAGGERED SCROLL REVEAL ANIMATION ---
+  function initScrollReveal() {
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px 0px -8% 0px',
+      threshold: 0.1
+    };
+    
+    // Track current active reveals in a queue to stagger them
+    let revealQueue = [];
+    let revealTimeout = null;
+    
+    function processRevealQueue() {
+      if (revealQueue.length === 0) {
+        revealTimeout = null;
+        return;
+      }
+      
+      const el = revealQueue.shift();
+      el.classList.add('revealed');
+      
+      // Delay before next element reveals
+      revealTimeout = setTimeout(processRevealQueue, 120);
+    }
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          revealQueue.push(el);
+          observer.unobserve(el);
+        }
+      });
+      
+      if (revealQueue.length > 0 && !revealTimeout) {
+        processRevealQueue();
+      }
+    }, observerOptions);
+    
+    document.querySelectorAll('.reveal-item').forEach((item) => {
+      observer.observe(item);
+    });
+  }
+
+  // --- AUTOMATIC NAVIGATION HIGHLIGHT ON SCROLL ---
+  function initScrollHighlight() {
+    const observerOptions = {
+      root: null,
+      rootMargin: '-20% 0px -50% 0px',
+      threshold: 0
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.getAttribute('id');
+          const sectionName = id.replace('section-', '');
+          
+          // Deactivate all nav items
+          document.querySelectorAll('.nav-item').forEach(n => n.style.background = '');
+          
+          // Activate matching nav item
+          const navEl = document.getElementById('nav-' + sectionName);
+          if (navEl) {
+            navEl.style.background = 'rgba(128,128,128,0.1)';
+          }
+        }
+      });
+    }, observerOptions);
+    
+    // Observe all sections
+    document.querySelectorAll('.section').forEach(sec => observer.observe(sec));
+    
+    // For top/home scroll monitoring
+    window.addEventListener('scroll', () => {
+      if (window.scrollY < 200) {
+        document.querySelectorAll('.nav-item').forEach(n => n.style.background = '');
+        const homeNav = document.getElementById('nav-home');
+        if (homeNav) {
+          homeNav.style.background = 'rgba(128,128,128,0.1)';
+        }
+      }
+    });
+  }
+
+  // Keyboard shortcuts and keystroke typing sound
+  document.addEventListener('keydown', function(e) {
+    playKeyClick();
+    
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault();
+        cycleTheme();
+      } else if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        showSection('home');
+      } else if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        showSection('biography');
+      } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        showSection('projects');
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        showSection('services');
+      }
+    }
+  });
+
+  // Play double BIOS startup beep on load and start sequence
+  window.addEventListener('load', () => {
+    updateFavicon();
+    // 1. BIOS startup double beep after 300ms
+    setTimeout(() => playBeep(880, 0.1), 300);
+    setTimeout(() => playBeep(880, 0.1), 450);
+
+    // 2. Clear name and start typewriter typing after 800ms
+    setTimeout(() => {
+      const nameEl = document.querySelector('.hero-name');
+      const originalText = "SADMAN FAHMID RAJ";
+      
+      let charIdx = 0;
+      function typeName() {
+        if (charIdx <= originalText.length) {
+          nameEl.innerHTML = originalText.substring(0, charIdx) + '<span class="typing-cursor"></span>';
+          charIdx++;
+          playKeyClick();
+          setTimeout(typeName, 2 + Math.random() * 4); // natural fast typing
+        } else {
+          nameEl.innerHTML = originalText + '<span class="cursor-dot">.</span>';
+          // 3. Reveal ASCII art line-by-line after name finishes
+          setTimeout(revealAscii, 250);
+        }
+      }
+      typeName();
+    }, 800);
+  });
+
+  function revealAscii() {
+    let count = 0;
+    function fakeTypingFeedback() {
+      if (count < 25) {
+        playKeyClick();
+        count++;
+        setTimeout(fakeTypingFeedback, 30);
+      } else {
+        document.body.classList.add('booted');
+        playBeep(960, 0.08); // Success beep
+        initScrollHighlight(); // Start highlighting nav items on scroll
+        initScrollReveal(); // Start staggered reveal of cards
+        initAmbientBg(); // Start ambient code rain canvas
+        initTextDecoders(); // Setup cyber text decoders
+        initCRTBeamSweep(); // Start CRT beam sweep
+        initVideoAsciiEngine(); // Start real-time video-to-ascii conversion
+      }
+    }
+    fakeTypingFeedback();
+  }
+
+  // --- LIVE SYSTEM CLOCK ---
+  function startClock() {
+    const timeEl = document.getElementById('live-time');
+    if (!timeEl) return;
+    const updateTime = () => {
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      timeEl.textContent = `${hh}:${mm}:${ss}`;
+    };
+    updateTime();
+    setInterval(updateTime, 1000);
+  }
+  startClock();
+</script>
+</body>
+</html>

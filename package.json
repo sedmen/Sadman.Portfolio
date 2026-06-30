@@ -1,0 +1,14 @@
+{
+  "name": "retro-portfolio",
+  "version": "2.64.0",
+  "description": "Retro OS Terminal Portfolio Website",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite --host --port 3000",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
